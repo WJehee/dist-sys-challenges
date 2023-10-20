@@ -2,15 +2,24 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct Message {
-    source: String,
-    destination: String,
+    src: String,
+    dest: String,
     body: Body,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct Body {
-    msg_type: String,
-    msg_id: Option<isize>,
-    in_reply_to: Option<isize>,
+    #[serde(flatten)]
+    msg_type: Type,
+    msg_id: Option<usize>,
+    in_reply_to: Option<usize>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum Type {
+    Echo { echo: String },
+    EchoOk {echo: String},
 }
 
