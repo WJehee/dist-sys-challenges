@@ -1,6 +1,6 @@
-use std::io::{BufRead, Write};
+use std::io::{Write, Lines, StdinLock};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Message<T> {
@@ -26,15 +26,11 @@ pub enum Init {
     InitOk,
 }
 
-pub fn handle_init(stdin: impl BufRead, mut stdout: impl Write) {
-    let mut stdin = stdin.lines();
-
-    let init_msg: Message<Init>= serde_json::from_str(
-        &stdin.next()
-            .unwrap()
-            .expect("failed to read line")
-    ).expect("unable to parse message");
-
+pub fn handle_init(stdin: &mut Lines<StdinLock<'_>>, stdout: &mut impl Write) {
+    let init_msg: Message<Init> = match parse_message(&mut *stdin) {
+        Some(msg) => msg,
+        None => panic!("did not receive init message first")
+    };
     let node_id = match init_msg.body.msg_type {
         Init::Init{node_id, node_ids: _} => node_id,
         _ => panic!("did not receive init message first"),
@@ -49,7 +45,15 @@ pub fn handle_init(stdin: impl BufRead, mut stdout: impl Write) {
             msg_type: Init::InitOk,
         }
     };
-    serde_json::to_writer(&mut stdout, &init_reply).unwrap();
+    serde_json::to_writer(&mut *stdout, &init_reply).unwrap();
     stdout.write_all(b"\n").unwrap();
+}
+
+pub fn parse_message<T: DeserializeOwned> (stdin: &mut Lines<StdinLock<'_>>) -> Option<Message<T>> {
+    serde_json::from_str(
+        &stdin.next()
+              .unwrap()
+              .expect("failed to read line")
+    ).unwrap_or(None)
 }
 

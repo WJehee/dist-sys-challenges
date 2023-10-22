@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "Dist-sys-challenges"
+name = "dist-sys-challenges"
 version = "0.1.0"
 dependencies = [
  "serde",
