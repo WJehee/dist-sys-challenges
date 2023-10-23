@@ -21,12 +21,12 @@ pub struct Body<T> {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum Init {
+enum Init {
     Init { node_id: String, node_ids: Vec<String> },
     InitOk,
 }
 
-pub fn handle_init(stdin: &mut Lines<StdinLock<'_>>, stdout: &mut impl Write) {
+pub fn handle_init(stdin: &mut Lines<StdinLock<'_>>, stdout: &mut impl Write) -> String {
     let init_msg: Message<Init> = match parse_message(&mut *stdin) {
         Some(msg) => msg,
         None => panic!("did not receive init message first")
@@ -37,7 +37,7 @@ pub fn handle_init(stdin: &mut Lines<StdinLock<'_>>, stdout: &mut impl Write) {
     };
 
     let init_reply = Message {
-        src: node_id,
+        src: node_id.clone(),
         dst: init_msg.src,
         body: Body {
             msg_id: Some(0),
@@ -47,6 +47,7 @@ pub fn handle_init(stdin: &mut Lines<StdinLock<'_>>, stdout: &mut impl Write) {
     };
     serde_json::to_writer(&mut *stdout, &init_reply).unwrap();
     stdout.write_all(b"\n").unwrap();
+    node_id
 }
 
 pub fn parse_message<T: DeserializeOwned> (stdin: &mut Lines<StdinLock<'_>>) -> Option<Message<T>> {
