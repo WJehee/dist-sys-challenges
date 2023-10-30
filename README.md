@@ -1,2 +1,2 @@
-# Dist-sys-challenges
-Solution for the fly.io distributed system challenges
+# Fly.io Distributed systems challenges
+Solutions for the [fly.io](https://fly.io/) distributed system challenges
