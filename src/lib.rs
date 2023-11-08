@@ -1,4 +1,4 @@
-use std::io::{Write, Lines, StdinLock};
+use std::io::{Write, Lines, StdinLock, BufRead};
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
@@ -57,4 +57,31 @@ pub fn parse_message<T: DeserializeOwned> (stdin: &mut Lines<StdinLock<'_>>) -> 
               .expect("failed to read line")
     ).unwrap_or(None)
 }
+
+pub trait Handler<T> {
+    fn handle_message(&mut self, msg: Message<T>) -> Message<T>;
+}
+
+pub fn main_loop<T, H>(mut handler: H) where
+    T: DeserializeOwned + Serialize,
+    H: Handler<T>
+{
+    let stdin = std::io::stdin().lock();
+    let mut stdin = stdin.lines();
+    let mut stdout = std::io::stdout().lock();
+
+    handle_init(&mut stdin, &mut stdout);
+
+    loop {
+        let msg: Message<T> = match parse_message(&mut stdin) {
+            Some(msg) => msg,
+            None => panic!("failed to parse message")
+        };
+        let reply = handler.handle_message(msg);
+
+        serde_json::to_writer(&mut stdout, &reply).unwrap();
+        stdout.write_all(b"\n").unwrap();
+    }
+}
+
 

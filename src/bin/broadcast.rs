@@ -1,8 +1,7 @@
-use std::{io::{BufRead, Write}, collections::HashMap};
+use std::collections::HashMap;
 
-use dist_sys_challenges::{Message, Body, handle_init, parse_message};
+use dist_sys_challenges::{Message, Body, Handler, main_loop};
 use serde::{Deserialize, Serialize};
-
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type")]
@@ -16,28 +15,21 @@ enum Broadcast {
     TopologyOk,
 }
 
-fn main() {
-    let stdin = std::io::stdin().lock();
-    let mut stdin = stdin.lines();
-    let mut stdout = std::io::stdout().lock();
+struct BroadcastSolution {
+    msg_count: usize,
+    messages_seen: Vec<usize>,
+}
 
-    let _my_id = handle_init(&mut stdin, &mut stdout);
-
-    let mut msg_count = 1;
-    let mut messages_seen: Vec<usize> = Vec::new();
-    loop {
-        let msg: Message<Broadcast> = match parse_message(&mut stdin) {
-            Some(msg) => msg,
-            None => panic!("failed to parse message")
-        };
+impl Handler<Broadcast> for BroadcastSolution {
+    fn handle_message(&mut self, msg: Message<Broadcast>) -> Message<Broadcast> {
         let reply = match msg.body.msg_type {
             Broadcast::Broadcast{message} => {
-                messages_seen.push(message);
+                self.messages_seen.push(message);
                 Message {
                     src: msg.dst,
                     dst: msg.src,
                     body: Body {
-                        msg_id: Some(msg_count),
+                        msg_id: Some(self.msg_count),
                         in_reply_to: Some(msg.body.msg_id.unwrap()),
                         msg_type: Broadcast::BroadcastOk
                     }
@@ -47,25 +39,32 @@ fn main() {
                 src: msg.dst,
                 dst: msg.src,
                 body: Body {
-                    msg_id: Some(msg_count),
+                    msg_id: Some(self.msg_count),
                     in_reply_to: Some(msg.body.msg_id.unwrap()),
-                    msg_type: Broadcast::ReadOk { messages: messages_seen.clone() }
+                    msg_type: Broadcast::ReadOk { messages: self.messages_seen.clone() }
                 }
             },
             Broadcast::Topology{topology: _topology} => Message {
                 src: msg.dst,
                 dst: msg.src,
                 body: Body {
-                    msg_id: Some(msg_count),
+                    msg_id: Some(self.msg_count),
                     in_reply_to: Some(msg.body.msg_id.unwrap()),
                     msg_type: Broadcast::TopologyOk
                 }
             },
             _ => panic!("Unexpected message type")
         };
-
-        serde_json::to_writer(&mut stdout, &reply).unwrap();
-        stdout.write_all(b"\n").unwrap();
-        msg_count += 1;
+        self.msg_count += 1;
+        reply
     }
 }
+
+fn main() {
+    let handler = BroadcastSolution {
+        msg_count: 1,
+        messages_seen: Vec::new(),
+    };
+    main_loop(handler);
+}
+

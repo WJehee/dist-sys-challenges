@@ -1,6 +1,4 @@
-use std::io::{BufRead, Write};
-
-use dist_sys_challenges::{Message, Body, handle_init, parse_message};
+use dist_sys_challenges::{Message, Body, Handler, main_loop};
 use serde::{Deserialize, Serialize};
 
 
@@ -12,34 +10,32 @@ enum Generate {
     GenerateOk{id: String},
 }
 
-fn main() {
-    let stdin = std::io::stdin().lock();
-    let mut stdin = stdin.lines();
-    let mut stdout = std::io::stdout().lock();
 
-    let my_id = handle_init(&mut stdin, &mut stdout);
-    let mut msg_count = 1;
+struct UniqueIDSolution {
+    msg_count: usize,
+}
 
-    loop {
-        let msg: Message<Generate> = match parse_message(&mut stdin) {
-            Some(msg) => msg,
-            None => panic!("failed to parse message")
-        };
+impl Handler<Generate> for UniqueIDSolution {
+    fn handle_message(&mut self, msg: Message<Generate>) -> Message<Generate> {
         let reply = match msg.body.msg_type {
             Generate::Generate => Message {
-                src: msg.dst,
+                src: msg.dst.clone(),
                 dst: msg.src,
                 body: Body {
-                    msg_id: Some(msg_count),
+                    msg_id: Some(self.msg_count),
                     in_reply_to: Some(msg.body.msg_id.unwrap()),
-                    msg_type: Generate::GenerateOk {id: format!("{0} - {msg_count}", my_id.clone())}
+                    msg_type: Generate::GenerateOk {id: format!("{0} - {1}", msg.dst, self.msg_count.clone())}
                 }
             },
             _ => panic!("unexpected message type")
         };
-        msg_count += 1;
-
-        serde_json::to_writer(&mut stdout, &reply).unwrap();
-        stdout.write_all(b"\n").unwrap();
+        self.msg_count += 1;
+        reply
     }
 }
+
+fn main() {
+    let handler = UniqueIDSolution {msg_count: 1};
+    main_loop(handler);
+}
+

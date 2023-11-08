@@ -1,6 +1,4 @@
-use std::io::{BufRead, Write};
-
-use dist_sys_challenges::{Message, Body, handle_init, parse_message};
+use dist_sys_challenges::{Message, Body, Handler, main_loop};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -11,19 +9,11 @@ enum Echo {
     EchoOk {echo: String},
 }
 
-fn main() {
-    let stdin = std::io::stdin().lock();
-    let mut stdin = stdin.lines();
-    let mut stdout = std::io::stdout().lock();
+struct EchoSolution;
 
-    handle_init(&mut stdin, &mut stdout);
-
-    loop {
-        let msg: Message<Echo> = match parse_message(&mut stdin) {
-            Some(msg) => msg,
-            None => panic!("failed to parse message")
-        };
-        let reply = match msg.body.msg_type {
+impl Handler<Echo> for EchoSolution {
+    fn handle_message(&mut self, msg: Message<Echo>) -> Message<Echo> {
+        match msg.body.msg_type {
             Echo::Echo{echo} => Message {
                 src: msg.dst,
                 dst: msg.src,
@@ -34,10 +24,12 @@ fn main() {
                 }
             },
             _ => panic!("unexpected message type")
-        };
-
-        serde_json::to_writer(&mut stdout, &reply).unwrap();
-        stdout.write_all(b"\n").unwrap();
+        }
     }
+}
+
+fn main() {
+    let handler = EchoSolution;
+    main_loop(handler);
 }
 
