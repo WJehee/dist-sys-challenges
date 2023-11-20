@@ -18,6 +18,20 @@ pub struct Body<T> {
     pub in_reply_to: Option<usize>,
 }
 
+impl<T> Message<T> {
+    pub fn from_msg(self, msg_id: usize) -> Self {
+        Self {
+            src: self.dst,
+            dst: self.src,
+            body: Body {
+                msg_id: Some(msg_id),
+                in_reply_to: self.body.msg_id,
+                msg_type: self.body.msg_type,
+            }
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
@@ -53,9 +67,9 @@ pub fn handle_init(stdin: &mut Lines<StdinLock<'_>>, stdout: &mut impl Write) ->
 pub fn parse_message<T: DeserializeOwned> (stdin: &mut Lines<StdinLock<'_>>) -> Option<Message<T>> {
     serde_json::from_str(
         &stdin.next()
-              .unwrap()
-              .expect("failed to read line")
-    ).unwrap_or(None)
+        .unwrap()
+        .expect("failed to read line")
+        ).unwrap_or(None)
 }
 
 pub trait Handler<T> {
@@ -63,8 +77,8 @@ pub trait Handler<T> {
 }
 
 pub fn main_loop<T, H>(mut handler: H) where
-    T: DeserializeOwned + Serialize,
-    H: Handler<T>
+T: DeserializeOwned + Serialize,
+H: Handler<T>
 {
     let stdin = std::io::stdin().lock();
     let mut stdin = stdin.lines();
@@ -83,5 +97,4 @@ pub fn main_loop<T, H>(mut handler: H) where
         stdout.write_all(b"\n").unwrap();
     }
 }
-
 
