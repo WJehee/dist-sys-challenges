@@ -9,6 +9,10 @@ _default:
 build:
     cargo build
 
+# Maelstrom serve
+serve:
+    ./maelstrom/maelstrom serve
+
 # Run echo test as per challenge description
 echo:
     cargo build

@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use dist_sys_challenges::{Message, Handler, main_loop};
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +14,9 @@ enum Echo {
 struct EchoSolution;
 
 impl Handler<Echo> for EchoSolution {
-    fn handle_message(&mut self, msg: Message<Echo>) -> Message<Echo> {
+    fn initialize(&mut self, _node_id: String) {}
+
+    fn handle_message(&mut self, msg: Message<Echo>, writer: &mut impl Write) {
         let mut reply = msg.from_msg(&mut 0);
         reply.body.msg_type = match reply.body.msg_type {
             Echo::Echo{echo} => {
@@ -20,7 +24,7 @@ impl Handler<Echo> for EchoSolution {
             },
             _ => panic!("unexpected message type")
         };
-        reply
+        reply.send(writer);
     }
 }
 

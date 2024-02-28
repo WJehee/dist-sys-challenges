@@ -32,9 +32,9 @@ impl<T: Serialize> Message<T> {
         }
     }
 
-    pub fn send(self, stdout: &mut impl Write) {
-        serde_json::to_writer(&mut *stdout, &self).unwrap();
-        stdout.write_all(b"\n").unwrap();
+    pub fn send(self, writer: &mut impl Write) {
+        serde_json::to_writer(&mut *writer, &self).unwrap();
+        writer.write_all(b"\n").unwrap();
     }
 }
 
@@ -78,7 +78,8 @@ pub fn parse_message<T: DeserializeOwned> (stdin: &mut Lines<StdinLock<'_>>) -> 
 }
 
 pub trait Handler<T> {
-    fn handle_message(&mut self, msg: Message<T>) -> Message<T>;
+    fn initialize(&mut self, node_id: String);
+    fn handle_message(&mut self, msg: Message<T>, writer: &mut impl Write);
 }
 
 pub fn main_loop<T, H>(mut handler: H) where
@@ -89,15 +90,15 @@ H: Handler<T>
     let mut stdin = stdin.lines();
     let mut stdout = std::io::stdout().lock();
 
-    handle_init(&mut stdin, &mut stdout);
+    let node_id = handle_init(&mut stdin, &mut stdout);
+    handler.initialize(node_id);
 
     loop {
         let msg: Message<T> = match parse_message(&mut stdin) {
             Some(msg) => msg,
             None => panic!("failed to parse message")
         };
-        let reply = handler.handle_message(msg);
-        reply.send(&mut stdout);
+        handler.handle_message(msg, &mut stdout);
     }
 }
 

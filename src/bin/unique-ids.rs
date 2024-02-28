@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use dist_sys_challenges::{Message, Handler, main_loop};
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +17,9 @@ struct UniqueIDSolution {
 }
 
 impl Handler<Generate> for UniqueIDSolution {
-    fn handle_message(&mut self, msg: Message<Generate>) -> Message<Generate> {
+    fn initialize(&mut self, _node_id: String) {}
+
+    fn handle_message(&mut self, msg: Message<Generate>, writer: &mut impl Write) {
         let mut reply = msg.from_msg(&mut self.msg_count);
         reply.body.msg_type = match reply.body.msg_type {
             Generate::Generate => {
@@ -23,8 +27,7 @@ impl Handler<Generate> for UniqueIDSolution {
             },
             _ => panic!("unexpected message type")
         };
-        // self.msg_count += 1;
-        reply
+        reply.send(writer);
     }
 }
 
