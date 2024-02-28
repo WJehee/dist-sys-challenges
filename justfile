@@ -2,6 +2,9 @@ bin_path := "target/debug"
 
 alias b := build
 
+_default:
+    just --list
+
 # Build
 build:
     cargo build

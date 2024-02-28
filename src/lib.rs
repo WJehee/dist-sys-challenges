@@ -18,17 +18,23 @@ pub struct Body<T> {
     pub in_reply_to: Option<usize>,
 }
 
-impl<T> Message<T> {
-    pub fn from_msg(self, msg_id: usize) -> Self {
+impl<T: Serialize> Message<T> {
+    pub fn from_msg(self, msg_id: &mut usize) -> Self {
+        *msg_id += 1;
         Self {
             src: self.dst,
             dst: self.src,
             body: Body {
-                msg_id: Some(msg_id),
+                msg_id: Some(*msg_id),
                 in_reply_to: self.body.msg_id,
                 msg_type: self.body.msg_type,
             }
         }
+    }
+
+    pub fn send(self, stdout: &mut impl Write) {
+        serde_json::to_writer(&mut *stdout, &self).unwrap();
+        stdout.write_all(b"\n").unwrap();
     }
 }
 
@@ -59,8 +65,7 @@ pub fn handle_init(stdin: &mut Lines<StdinLock<'_>>, stdout: &mut impl Write) ->
             msg_type: Init::InitOk,
         }
     };
-    serde_json::to_writer(&mut *stdout, &init_reply).unwrap();
-    stdout.write_all(b"\n").unwrap();
+    init_reply.send(&mut *stdout);
     node_id
 }
 
@@ -92,9 +97,7 @@ H: Handler<T>
             None => panic!("failed to parse message")
         };
         let reply = handler.handle_message(msg);
-
-        serde_json::to_writer(&mut stdout, &reply).unwrap();
-        stdout.write_all(b"\n").unwrap();
+        reply.send(&mut stdout);
     }
 }
 

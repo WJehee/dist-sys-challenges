@@ -16,14 +16,14 @@ struct UniqueIDSolution {
 
 impl Handler<Generate> for UniqueIDSolution {
     fn handle_message(&mut self, msg: Message<Generate>) -> Message<Generate> {
-        let mut reply = msg.from_msg(self.msg_count);
+        let mut reply = msg.from_msg(&mut self.msg_count);
         reply.body.msg_type = match reply.body.msg_type {
             Generate::Generate => {
                 Generate::GenerateOk {id: format!("{0} - {1}", reply.src, self.msg_count.clone())}
             },
             _ => panic!("unexpected message type")
         };
-        self.msg_count += 1;
+        // self.msg_count += 1;
         reply
     }
 }

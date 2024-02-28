@@ -18,25 +18,30 @@ enum Broadcast {
 struct BroadcastSolution {
     msg_count: usize,
     messages_seen: Vec<usize>,
+    propagated: HashMap<usize, Vec<String>>,
+    topology: Option<HashMap<String, Vec<String>>>,
 }
 
 impl Handler<Broadcast> for BroadcastSolution {
     fn handle_message(&mut self, msg: Message<Broadcast>) -> Message<Broadcast> {
-        let mut reply = msg.from_msg(self.msg_count);
+        let mut reply = msg.from_msg(&mut self.msg_count);
         reply.body.msg_type = match reply.body.msg_type {
             Broadcast::Broadcast{message} => {
+                if let Some(topology) = &self.topology {
+
+                }
                 self.messages_seen.push(message);
                 Broadcast::BroadcastOk
             },
             Broadcast::Read => {
                 Broadcast::ReadOk { messages: self.messages_seen.clone() }
             },
-            Broadcast::Topology{topology: _topology} => {
+            Broadcast::Topology{topology} => {
+                self.topology = Some(topology);
                 Broadcast::TopologyOk
             },
             _ => panic!("Unexpected message type")
         };
-        self.msg_count += 1;
         reply
     }
 }
@@ -45,6 +50,8 @@ fn main() {
     let handler = BroadcastSolution {
         msg_count: 1,
         messages_seen: Vec::new(),
+        propagated: HashMap::new(),
+        topology: None,
     };
     main_loop(handler);
 }

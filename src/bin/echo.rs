@@ -13,7 +13,7 @@ struct EchoSolution;
 
 impl Handler<Echo> for EchoSolution {
     fn handle_message(&mut self, msg: Message<Echo>) -> Message<Echo> {
-        let mut reply = msg.from_msg(1);
+        let mut reply = msg.from_msg(&mut 0);
         reply.body.msg_type = match reply.body.msg_type {
             Echo::Echo{echo} => {
                 Echo::EchoOk{echo}
