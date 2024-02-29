@@ -1,4 +1,4 @@
-use std::io::{Write, Lines, StdinLock, BufRead};
+use std::{io::{BufRead, Lines, StdinLock, Write}, sync::mpsc::{channel, Sender}};
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
@@ -16,6 +16,12 @@ pub struct Body<T> {
     pub msg_type: T,
     pub msg_id: Option<usize>,
     pub in_reply_to: Option<usize>,
+}
+
+#[derive(Debug)]
+pub enum Event<T> {
+    Message(Message<T>),
+    Body(Body<T>),
 }
 
 impl<T: Serialize> Message<T> {
@@ -38,6 +44,11 @@ impl<T: Serialize> Message<T> {
     }
 }
 
+pub trait Handler<T> {
+    fn initialize(&mut self, node_id: String, sender: Sender<Event<T>>);
+    fn handle_event(&mut self, msg: Event<T>, writer: &mut impl Write);
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
@@ -46,8 +57,39 @@ enum Init {
     InitOk,
 }
 
-pub fn handle_init(stdin: &mut Lines<StdinLock<'_>>, stdout: &mut impl Write) -> String {
-    let init_msg: Message<Init> = match parse_message(&mut *stdin) {
+pub fn main_loop<T, H>(mut handler: H) where
+T: DeserializeOwned + Serialize + Send + 'static,
+H: Handler<T>
+{
+    let node_id = handle_init();
+    let (send_channel, recv_channel) = channel();
+    handler.initialize(node_id, send_channel.clone());
+
+    std::thread::spawn(move || {
+        let stdin = std::io::stdin().lock();
+        let mut stdin = stdin.lines();
+        loop {
+            match parse_message(&mut stdin) {
+                Some(msg) => send_channel.send(Event::Message(msg)).expect("Failed sending over channel"),
+                None => {},
+            };
+        }
+    });
+
+    let mut stdout = std::io::stdout().lock();
+    loop {
+        for event in &recv_channel {
+            handler.handle_event(event, &mut stdout);
+        }
+    }
+}
+
+pub fn handle_init() -> String {
+    let stdin = std::io::stdin().lock();
+    let mut stdin = stdin.lines();
+    let mut stdout = std::io::stdout().lock();
+
+    let init_msg: Message<Init> = match parse_message(&mut stdin) {
         Some(msg) => msg,
         None => panic!("did not receive init message first")
     };
@@ -65,7 +107,7 @@ pub fn handle_init(stdin: &mut Lines<StdinLock<'_>>, stdout: &mut impl Write) ->
             msg_type: Init::InitOk,
         }
     };
-    init_reply.send(&mut *stdout);
+    init_reply.send(&mut stdout);
     node_id
 }
 
@@ -77,28 +119,5 @@ pub fn parse_message<T: DeserializeOwned> (stdin: &mut Lines<StdinLock<'_>>) -> 
         ).unwrap_or(None)
 }
 
-pub trait Handler<T> {
-    fn initialize(&mut self, node_id: String);
-    fn handle_message(&mut self, msg: Message<T>, writer: &mut impl Write);
-}
 
-pub fn main_loop<T, H>(mut handler: H) where
-T: DeserializeOwned + Serialize,
-H: Handler<T>
-{
-    let stdin = std::io::stdin().lock();
-    let mut stdin = stdin.lines();
-    let mut stdout = std::io::stdout().lock();
-
-    let node_id = handle_init(&mut stdin, &mut stdout);
-    handler.initialize(node_id);
-
-    loop {
-        let msg: Message<T> = match parse_message(&mut stdin) {
-            Some(msg) => msg,
-            None => panic!("failed to parse message")
-        };
-        handler.handle_message(msg, &mut stdout);
-    }
-}
 

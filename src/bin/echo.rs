@@ -1,6 +1,6 @@
-use std::io::Write;
+use std::{io::Write, sync::mpsc::Sender};
 
-use dist_sys_challenges::{Message, Handler, main_loop};
+use dist_sys_challenges::{main_loop, Event, Handler};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -14,17 +14,19 @@ enum Echo {
 struct EchoSolution;
 
 impl Handler<Echo> for EchoSolution {
-    fn initialize(&mut self, _node_id: String) {}
+    fn initialize(&mut self, _node_id: String, _sender: Sender<Event<Echo>>) {}
 
-    fn handle_message(&mut self, msg: Message<Echo>, writer: &mut impl Write) {
-        let mut reply = msg.from_msg(&mut 0);
-        reply.body.msg_type = match reply.body.msg_type {
-            Echo::Echo{echo} => {
-                Echo::EchoOk{echo}
-            },
-            _ => panic!("unexpected message type")
-        };
-        reply.send(writer);
+    fn handle_event(&mut self, msg: Event<Echo>, writer: &mut impl Write) {
+        if let Event::Message(msg) = msg {
+            let mut reply = msg.from_msg(&mut 0);
+            reply.body.msg_type = match reply.body.msg_type {
+                Echo::Echo{echo} => {
+                    Echo::EchoOk{echo}
+                },
+                _ => panic!("unexpected message type")
+            };
+            reply.send(writer);
+        }
     }
 }
 
