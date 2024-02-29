@@ -13,18 +13,19 @@ build:
 serve:
     ./maelstrom/maelstrom serve
 
-# Run echo test as per challenge description
-echo:
-    cargo build
+# Run echo test (1)
+echo: build
     ./maelstrom/maelstrom test -w echo --bin {{bin_path}}/echo --node-count 1 --time-limit 10
 
-# Run unique-ids test as per challenge description
-unique-ids:
-    cargo build
+# Run unique-ids test (2)
+unique-ids: build
     ./maelstrom/maelstrom test -w unique-ids --bin {{bin_path}}/unique-ids --time-limit 30 --rate 1000 --node-count 3 --availability total --nemesis partition
 
-# Run broadcast test as per challenge description
-broadcast:
-    cargo build
+# Run broadcast test a (3a) 
+broadcast-a: build
     ./maelstrom/maelstrom test -w broadcast --bin {{bin_path}}/broadcast --node-count 1 --time-limit 20 --rate 10
+
+# Run broadcast test b (3b)
+broadcast-b:
+    ./maelstrom/maelstrom test -w broadcast --bin {{bin_path}}/broadcast --node-count 5 --time-limit 20 --rate 10
 

@@ -16,8 +16,8 @@ struct EchoSolution;
 impl Handler<Echo> for EchoSolution {
     fn initialize(&mut self, _node_id: String, _sender: Sender<Event<Echo>>) {}
 
-    fn handle_event(&mut self, msg: Event<Echo>, writer: &mut impl Write) {
-        if let Event::Message(msg) = msg {
+    fn handle_event(&mut self, event: Event<Echo>, writer: &mut impl Write) {
+        if let Event::Message(msg) = event {
             let mut reply = msg.from_msg(&mut 0);
             reply.body.msg_type = match reply.body.msg_type {
                 Echo::Echo{echo} => {

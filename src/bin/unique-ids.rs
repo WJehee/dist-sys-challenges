@@ -19,8 +19,8 @@ struct UniqueIDSolution {
 impl Handler<Generate> for UniqueIDSolution {
     fn initialize(&mut self, _node_id: String, _sender: Sender<Event<Generate>>) {}
 
-    fn handle_event(&mut self, msg: Event<Generate>, writer: &mut impl Write) {
-        if let Event::Message(msg) = msg {
+    fn handle_event(&mut self, event: Event<Generate>, writer: &mut impl Write) {
+        if let Event::Message(msg) = event {
             let mut reply = msg.from_msg(&mut self.msg_count);
             reply.body.msg_type = match reply.body.msg_type {
                 Generate::Generate => {

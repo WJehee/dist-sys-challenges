@@ -21,7 +21,7 @@ pub struct Body<T> {
 #[derive(Debug)]
 pub enum Event<T> {
     Message(Message<T>),
-    Body(Body<T>),
+    Body(T),
 }
 
 impl<T: Serialize> Message<T> {

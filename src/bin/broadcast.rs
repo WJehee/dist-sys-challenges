@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::sync::mpsc::Sender;
+use std::time::Duration;
 
-use dist_sys_challenges::{main_loop, Event, Handler};
+use dist_sys_challenges::{main_loop, Body, Event, Handler, Message};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -16,30 +17,28 @@ enum Broadcast {
     Topology{topology: HashMap<String, Vec<String>>},
     TopologyOk,
     Gossip{messages_seen: HashSet<usize>},
+    GossipSend,
 }
 
 struct BroadcastSolution {
     node_id: String,
     msg_count: usize,
     messages_seen: HashSet<usize>,
-    // propagated: HashMap<usize, Vec<String>>,
     topology: Option<Vec<String>>,
-}
-
-impl BroadcastSolution {
-    fn gossip(&self, writer: &mut impl Write) {
-        if let Some(topology) = &self.topology {
-            for node in topology {
-                
-            }
-        }
-    }
 }
 
 impl Handler<Broadcast> for BroadcastSolution {
     fn initialize(&mut self, node_id: String, sender: Sender<Event<Broadcast>>) {
         self.node_id = node_id;
-        // TODO: send gossip events every so often
+        // Send gossip events every so often
+        std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(Duration::from_millis(300));
+                if let Err(_) = sender.send(Event::Body(Broadcast::GossipSend)) {
+                    break;
+                }
+            }
+        });
     }
 
     fn handle_event(&mut self, event: Event<Broadcast>, writer: &mut impl Write) {
@@ -64,14 +63,28 @@ impl Handler<Broadcast> for BroadcastSolution {
                     Broadcast::Gossip { messages_seen } => {
                         self.messages_seen.extend(messages_seen);
                     },
-                    Broadcast::BroadcastOk | Broadcast::TopologyOk | Broadcast::ReadOk{..} => { panic!{"Unexpected message type"} }
+                    Broadcast::BroadcastOk | Broadcast::TopologyOk | Broadcast::GossipSend | Broadcast::ReadOk{..} => { panic!{"Unexpected message type"} }
                 };
             },
-            Event::Body(body) => {
-
-            }
+            Event::Body(Broadcast::GossipSend) => {
+                if let Some(topology) = &self.topology {
+                    for node in topology {
+                        let msg = Message {
+                            src: self.node_id.clone(),
+                            dst: node.to_string(),
+                            body: Body {
+                                msg_id: Some(self.msg_count),
+                                msg_type: Broadcast::Gossip { messages_seen: self.messages_seen.clone() },
+                                in_reply_to: None,
+                            }
+                        };
+                        msg.send(writer);
+                        self.msg_count += 1;
+                    }
+                }
+            },
+            _ => panic!("Unexpected event"),
         }
-
     }
 }
 
@@ -80,7 +93,6 @@ fn main() {
         node_id: String::new(),
         msg_count: 0,
         messages_seen: HashSet::new(),
-        // propagated: HashMap::new(),
         topology: None,
     };
     main_loop(handler);
