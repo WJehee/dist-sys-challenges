@@ -29,3 +29,7 @@ broadcast-a: build
 broadcast-b:
     ./maelstrom/maelstrom test -w broadcast --bin {{bin_path}}/broadcast --node-count 5 --time-limit 20 --rate 10
 
+# Run broadcast test c (3c)
+broadcast-c:
+    ./maelstrom/maelstrom test -w broadcast --bin {{bin_path}}/broadcast --node-count 5 --time-limit 20 --rate 10 --nemesis partition
+
