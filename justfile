@@ -26,10 +26,14 @@ broadcast-a: build
     ./maelstrom/maelstrom test -w broadcast --bin {{bin_path}}/broadcast --node-count 1 --time-limit 20 --rate 10
 
 # Run broadcast test b (3b)
-broadcast-b:
+broadcast-b: build
     ./maelstrom/maelstrom test -w broadcast --bin {{bin_path}}/broadcast --node-count 5 --time-limit 20 --rate 10
 
 # Run broadcast test c (3c)
-broadcast-c:
+broadcast-c: build
     ./maelstrom/maelstrom test -w broadcast --bin {{bin_path}}/broadcast --node-count 5 --time-limit 20 --rate 10 --nemesis partition
+
+# Run broadcast test d and e (3d & 3e)
+broadcast-efficiency: build
+    ./maelstrom/maelstrom test -w broadcast --bin {{bin_path}}/broadcast --node-count 25 --time-limit 20 --rate 100 --latency 100
 
